@@ -1,4 +1,8 @@
+#!/usr/bin/env python3
+
+
 import yaml
+import time
 import json
 import os
 
@@ -8,9 +12,11 @@ Specify the Jekyll post directory (relative to this file's location)
 and the output file name.
 """
 
-post_directory = '../_posts/'
+post_directory = './_posts/'
 new_filename = 'jekyll_to_ghost.json'
 
+
+current_time = int(round(time.time() * 1000))
 
 """
 Get list of .md or .markdown files from that directory.
@@ -29,9 +35,16 @@ Build an empty dictionary structure for the output file.
 
 json_object = {}
 json_object['db'] = []
+
+ghost_meta = {
+        "exported_on": current_time,
+        "version": "3.10.0",
+}
+
 posts_object = {}
 posts_object['data'] = {}
 posts_object['data']['posts'] = []
+posts_object['meta'] = ghost_meta
 
 
 """
@@ -49,12 +62,13 @@ for filename in file_list:
 
     parsed = parsed.split('---\n')
     header = yaml.load(parsed[1])
-    header['content'] = parsed[2].replace('/assets/images/', '/content/images/')
+    header['content'] = parsed[2].replace('/assets/img/', '/content/images/')
 
     post_object = {
     "id": 0,
     "title": "",
     "slug": "",
+    "mobiledoc": "",
     "markdown": "",
     "html": "",
     "image": "",
@@ -73,6 +87,17 @@ for filename in file_list:
     "published_by": 1
     }
 
+
+    # Convert the Markdown into Mobiledoc
+    # https://ghost.org/docs/api/v3/migration/#mobiledoc
+    mobiledoc_dict = {
+        "version": '0.3.1',
+        "markups": [],
+        "atoms": [],
+        "cards": [['markdown', {"cardName": 'markdown', "markdown": header['content']}]],
+        "sections": [[10, 0]]
+    }
+
     post_object['title'] = post_object['og_title'] = post_object['twitter_title'] = header['title']
     post_object['meta_title'] = header['title']
     post_object['slug'] = filename[11:].split('.')[0]
@@ -89,6 +114,9 @@ for filename in file_list:
         post_object['image'] = post_object['og_image'] = post_object['twitter_image'] = '/content/images/' + header['image']['feature']
     except:
         post_object['image'] = post_object['og_image'] = post_object['twitter_image'] = ''
+
+    post_object['mobiledoc'] = json.dumps(mobiledoc_dict)
+
 
     posts_object['data']['posts'].append(post_object)
 
